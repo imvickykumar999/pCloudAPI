@@ -9,22 +9,32 @@ def index():
         url = request.form.get('url')
         method = request.form.get('method')
         headers = {}
-        
+
         # Add headers to the dictionary
-        for i in range(10):
+        header_count = int(request.form.get('header_count', 0))
+        for i in range(header_count):
             header_key = request.form.get(f'header_key_{i}')
             header_value = request.form.get(f'header_value_{i}')
             if header_key and header_value:
                 headers[header_key] = header_value
-        
+
         body = request.form.get('body')
-        
+        files = None
+
+        # Handle file uploads for POST request
+        if 'file' in request.files:
+            file = request.files['file']
+            files = {'file': (file.filename, file.stream, file.content_type)}
+
         try:
             if method == 'GET':
                 response = requests.get(url, headers=headers)
             elif method == 'POST':
-                response = requests.post(url, headers=headers, data=body)
-            
+                if files:
+                    response = requests.post(url, headers=headers, files=files)
+                else:
+                    response = requests.post(url, headers=headers, data=body)
+
             # Return response details in the HTML response
             return render_template_string(HTML_TEMPLATE, 
                                            response=response.text,
@@ -32,12 +42,14 @@ def index():
                                            url=url, 
                                            method=method,
                                            headers=headers, 
-                                           body=body)
+                                           body=body,
+                                           header_count=header_count)
         except Exception as e:
             return render_template_string(HTML_TEMPLATE, 
-                                           error=str(e))
+                                           error=str(e), 
+                                           header_count=header_count)
     
-    return render_template_string(HTML_TEMPLATE, response=None)
+    return render_template_string(HTML_TEMPLATE, response=None, header_count=1)
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -49,7 +61,7 @@ HTML_TEMPLATE = """
     <style>
         /* General Reset */
         * {
-            margin: 0;
+            margin: 1;
             padding: 0;
             box-sizing: border-box;
         }
@@ -92,7 +104,7 @@ HTML_TEMPLATE = """
         }
 
         /* Input Fields */
-        input[type="text"], textarea, select {
+        input[type="text"], textarea, select, input[type="file"] {
             background-color: #444;
             border: 1px solid #666;
             color: #fff;
@@ -103,7 +115,7 @@ HTML_TEMPLATE = """
             border-radius: 4px;
         }
 
-        input[type="text"]:focus, textarea:focus, select:focus {
+        input[type="text"]:focus, textarea:focus, select:focus, input[type="file"]:focus {
             outline: none;
             border-color: #ff6f00;
         }
@@ -182,13 +194,28 @@ HTML_TEMPLATE = """
         tr:hover {
             background-color: #666;
         }
+
+        /* Container for header input fields */
+        .header-inputs {
+            display: flex;
+            gap: 10px; /* Adds space between the fields */
+        }
+
+        /* Style for each input field */
+        .header-inputs input {
+            flex: 1; /* Ensures each input takes equal width */
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>API Tester</h2>
-    <form method="POST">
+
+    <a href="/" style="text-decoration: none; color: #ff6f00;">
+            <h2 style="text-align: center;">API Tester</h2>
+    </a>
+
+    <form method="POST" enctype="multipart/form-data">
         <div class="form-control">
             <label for="url">API URL:</label>
             <input type="text" id="url" name="url" required class="form-control" value="{{ request.form.get('url') }}">
@@ -204,10 +231,12 @@ HTML_TEMPLATE = """
 
         <div id="headers">
             <h4>Headers:</h4>
-            {% for i in range(1) %}
+            {% for i in range(header_count) %}
             <div class="form-control">
-                <input type="text" name="header_key_{{ i }}" placeholder="Header Key" class="form-control" value="{{ request.form.get('header_key_' + i|string) }}">
-                <input type="text" name="header_value_{{ i }}" placeholder="Header Value" class="form-control" value="{{ request.form.get('header_value_' + i|string) }}">
+                <div class="header-inputs">
+                    <input type="text" name="header_key_{{ i }}" placeholder="Header Key" class="form-control" value="{{ request.form.get('header_key_' + i|string) }}">
+                    <input type="text" name="header_value_{{ i }}" placeholder="Header Value" class="form-control" value="{{ request.form.get('header_value_' + i|string) }}">
+                </div>
             </div>
             {% endfor %}
         </div>
@@ -217,7 +246,14 @@ HTML_TEMPLATE = """
             <textarea name="body" id="body" class="form-control">{{ request.form.get('body') }}</textarea>
         </div>
 
-        <button type="submit">Send Request</button>
+        <div class="form-control">
+            <label for="file">File (for POST only):</label>
+            <input type="file" name="file" class="form-control">
+        </div>
+
+        <div class="form-control">
+            <button type="submit">Send Request</button>
+        </div>
     </form>
 
     {% if response %}
