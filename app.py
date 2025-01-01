@@ -1,300 +1,242 @@
-from flask import Flask, render_template_string, request, send_from_directory, url_for
-import os
+from flask import Flask, request, render_template_string
+import requests
 
 app = Flask(__name__)
 
-# Folder path to list files
-FOLDER_PATH = "./"  # Replace with your folder path
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        url = request.form.get('url')
+        method = request.form.get('method')
+        headers = {}
+        
+        # Add headers to the dictionary
+        for i in range(10):
+            header_key = request.form.get(f'header_key_{i}')
+            header_value = request.form.get(f'header_value_{i}')
+            if header_key and header_value:
+                headers[header_key] = header_value
+        
+        body = request.form.get('body')
+        
+        try:
+            if method == 'GET':
+                response = requests.get(url, headers=headers)
+            elif method == 'POST':
+                response = requests.post(url, headers=headers, data=body)
+            
+            # Return response details in the HTML response
+            return render_template_string(HTML_TEMPLATE, 
+                                           response=response.text,
+                                           status_code=response.status_code, 
+                                           url=url, 
+                                           method=method,
+                                           headers=headers, 
+                                           body=body)
+        except Exception as e:
+            return render_template_string(HTML_TEMPLATE, 
+                                           error=str(e))
+    
+    return render_template_string(HTML_TEMPLATE, response=None)
 
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Tester</title>
+    <style>
+        /* General Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-@app.route('/')
-def list_files():
-    try:
-        # Get the list of files and directories in the folder
-        entries = os.listdir(FOLDER_PATH)
-        directories = []
-        files = []
-        for entry in entries:
-            entry_path = os.path.join(FOLDER_PATH, entry)
-            if os.path.isdir(entry_path):
-                directories.append(f"{entry}/")
-            else:
-                files.append(entry)
+        /* Body */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #2d2d2d; /* Dark background color */
+            color: #fff;
+            padding: 20px;
+        }
 
-        # Sort the lists alphabetically (case-insensitive)
-        directories.sort(key=lambda x: x.lower())
-        files.sort(key=lambda x: x.lower())
+        /* Container */
+        .container {
+            width: 80%;
+            margin: auto;
+            background-color: #333;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
 
-        # Combine directories and files, with directories first
-        files_and_dirs = directories + files
+        /* Header */
+        h2 {
+            color: #ff6f00; /* Postman orange */
+            font-size: 26px;
+            margin-bottom: 20px;
+        }
 
-        return render_template_string(
-            """<!doctype html>
-            <html>
-            <head>
-                <title>{{ title }}</title>
-                <style>
-                    body {
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                        background: #f9f9f9;
-                        color: #333;
-                        margin: 0;
-                        padding: 0;
-                    }
+        /* Form Controls */
+        .form-control {
+            margin-bottom: 20px; /* Add space between form controls */
+        }
 
-                    .container {
-                        max-width: 900px;
-                        margin: 50px auto;
-                        padding: 20px;
-                        background: #ffffff;
-                        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-                        border-radius: 10px;
-                        text-align: left;
-                    }
+        /* Label Style */
+        label {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 8px; /* Space between label and input */
+        }
 
-                    h1 {
-                        font-size: 1.8rem;
-                        margin-bottom: 20px;
-                        text-align: center;
-                    }
+        /* Input Fields */
+        input[type="text"], textarea, select {
+            background-color: #444;
+            border: 1px solid #666;
+            color: #fff;
+            padding: 10px;
+            font-size: 14px;
+            width: 100%;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
 
-                    .file-list {
-                        list-style: none;
-                        padding: 0;
-                    }
+        input[type="text"]:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #ff6f00;
+        }
 
-                    .file-list li {
-                        display: flex;
-                        justify-content: space-between;
-                        padding: 10px 15px;
-                        border-bottom: 1px solid #ddd;
-                    }
+        /* Buttons */
+        button {
+            background-color: #ff6f00;
+            color: #fff;
+            padding: 12px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
 
-                    .file-name {
-                        font-size: 1rem;
-                    }
+        button:hover {
+            background-color: #e65c00;
+        }
 
-                    .folder-name {
-                        color: blue;
-                        font-weight: bold;
-                    }
+        /* Response Section */
+        .response-container {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #1e1e1e;
+            border-radius: 8px;
+        }
 
-                    .open-button {
-                        text-decoration: none;
-                        padding: 8px 15px;
-                        border: 1px solid #28a745;
-                        background-color: #28a745;
-                        color: white;
-                        border-radius: 5px;
-                        font-size: 0.9rem;
-                        transition: all 0.3s ease;
-                    }
+        .response-container h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            color: #ff6f00;
+        }
 
-                    .open-button:hover {
-                        background-color: #1e7e34;
-                        border-color: #1e7e34;
-                    }
+        .response-container pre {
+            background-color: #333;
+            padding: 15px;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 14px;
+            overflow-x: auto;
+        }
 
-                    .view-button {
-                        text-decoration: none;
-                        padding: 8px 15px;
-                        border: 1px solid #007BFF;
-                        background-color: #007BFF;
-                        color: white;
-                        border-radius: 5px;
-                        font-size: 0.9rem;
-                        transition: all 0.3s ease;
-                    }
+        /* Error Message */
+        .error {
+            color: #ff3d00;
+            font-size: 14px;
+            margin-top: 20px;
+        }
 
-                    .view-button:hover {
-                        background-color: #0056b3;
-                        border-color: #0056b3;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h1>{{ title }}</h1>
-                    <ul class="file-list">
-                        {% for entry in files_and_dirs %}
-                            <li>
-                                <span class="file-name {% if entry.endswith('/') %}folder-name{% endif %}">{{ entry }}</span>
-                                {% if entry.endswith('/') %}
-                                    <a href="/folder/{{ current_path + '/' if current_path else '' }}{{ entry[:-1] }}" class="open-button">Open</a>
-                                {% else %}
-                                    <a href="/file/{{ current_path + '/' if current_path else '' }}{{ entry }}" class="view-button">View</a>
-                                {% endif %}
-                            </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </body>
-            </html>""",
-            title=f"Files in {FOLDER_PATH}",
-            files_and_dirs=files_and_dirs,
-            current_path=""  # Root path
-        )
-    except Exception as e:
-        return f"An error occurred: {e}"
+        /* Table Style for Headers */
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
 
+        table, th, td {
+            border: 1px solid #666;
+        }
 
-@app.route('/file/<path:filename>')
-def serve_file(filename):
-    try:
-        requested_file = os.path.join(FOLDER_PATH, filename)
-        abs_requested_file = os.path.abspath(requested_file)
-        abs_folder_path = os.path.abspath(FOLDER_PATH)
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
 
-        if not abs_requested_file.startswith(abs_folder_path):
-            return "Access denied", 403
+        th {
+            background-color: #444;
+            color: #fff;
+        }
 
-        if not os.path.isfile(abs_requested_file):
-            return "File not found", 404
+        tr:nth-child(even) {
+            background-color: #555;
+        }
 
-        return send_from_directory(FOLDER_PATH, filename)
-    except Exception as e:
-        return f"An error occurred while opening the file: {e}"
+        tr:hover {
+            background-color: #666;
+        }
+    </style>
+</head>
+<body>
 
+<div class="container">
+    <h2>API Tester</h2>
+    <form method="POST">
+        <div class="form-control">
+            <label for="url">API URL:</label>
+            <input type="text" id="url" name="url" required class="form-control" value="{{ request.form.get('url') }}">
+        </div>
 
-@app.route('/folder/<path:foldername>')
-def list_folder_contents(foldername):
-    try:
-        requested_path = os.path.join(FOLDER_PATH, foldername)
-        abs_requested_path = os.path.abspath(requested_path)
-        abs_folder_path = os.path.abspath(FOLDER_PATH)
+        <div class="form-control">
+            <label for="method">Request Method:</label>
+            <select name="method" id="method" required class="form-control">
+                <option value="GET" {% if request.form.get('method') == 'GET' %}selected{% endif %}>GET</option>
+                <option value="POST" {% if request.form.get('method') == 'POST' %}selected{% endif %}>POST</option>
+            </select>
+        </div>
 
-        if not abs_requested_path.startswith(abs_folder_path):
-            return "Access denied", 403
+        <div id="headers">
+            <h4>Headers:</h4>
+            {% for i in range(1) %}
+            <div class="form-control">
+                <input type="text" name="header_key_{{ i }}" placeholder="Header Key" class="form-control" value="{{ request.form.get('header_key_' + i|string) }}">
+                <input type="text" name="header_value_{{ i }}" placeholder="Header Value" class="form-control" value="{{ request.form.get('header_value_' + i|string) }}">
+            </div>
+            {% endfor %}
+        </div>
 
-        if not os.path.isdir(abs_requested_path):
-            return "Folder not found", 404
+        <div class="form-control">
+            <label for="body">Request Body (for POST only):</label>
+            <textarea name="body" id="body" class="form-control">{{ request.form.get('body') }}</textarea>
+        </div>
 
-        entries = os.listdir(abs_requested_path)
-        directories = []
-        files = []
-        for entry in entries:
-            entry_path = os.path.join(abs_requested_path, entry)
-            if os.path.isdir(entry_path):
-                directories.append(f"{entry}/")
-            else:
-                files.append(entry)
+        <button type="submit">Send Request</button>
+    </form>
 
-        directories.sort(key=lambda x: x.lower())
-        files.sort(key=lambda x: x.lower())
+    {% if response %}
+    <div class="response-container">
+        <h3>Response:</h3>
+        <p><strong>Status Code:</strong> {{ status_code }}</p>
+        <p><strong>Response Body:</strong></p>
+        <pre>{{ response }}</pre>
+    </div>
+    {% endif %}
 
-        files_and_dirs = directories + files
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+</div>
 
-        current_path = foldername
-
-        return render_template_string(
-            """<!doctype html>
-            <html>
-            <head>
-                <title>{{ title }}</title>
-                <style>
-                    body {
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                        background: #f9f9f9;
-                        color: #333;
-                        margin: 0;
-                        padding: 0;
-                    }
-
-                    .container {
-                        max-width: 900px;
-                        margin: 50px auto;
-                        padding: 20px;
-                        background: #ffffff;
-                        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-                        border-radius: 10px;
-                        text-align: left;
-                    }
-
-                    h1 {
-                        font-size: 1.8rem;
-                        margin-bottom: 20px;
-                        text-align: center;
-                    }
-
-                    .file-list {
-                        list-style: none;
-                        padding: 0;
-                    }
-
-                    .file-list li {
-                        display: flex;
-                        justify-content: space-between;
-                        padding: 10px 15px;
-                        border-bottom: 1px solid #ddd;
-                    }
-
-                    .file-name {
-                        font-size: 1rem;
-                    }
-
-                    .folder-name {
-                        color: blue;
-                        font-weight: bold;
-                    }
-
-                    .open-button {
-                        text-decoration: none;
-                        padding: 8px 15px;
-                        border: 1px solid #28a745;
-                        background-color: #28a745;
-                        color: white;
-                        border-radius: 5px;
-                        font-size: 0.9rem;
-                        transition: all 0.3s ease;
-                    }
-
-                    .open-button:hover {
-                        background-color: #1e7e34;
-                        border-color: #1e7e34;
-                    }
-
-                    .view-button {
-                        text-decoration: none;
-                        padding: 8px 15px;
-                        border: 1px solid #007BFF;
-                        background-color: #007BFF;
-                        color: white;
-                        border-radius: 5px;
-                        font-size: 0.9rem;
-                        transition: all 0.3s ease;
-                    }
-
-                    .view-button:hover {
-                        background-color: #0056b3;
-                        border-color: #0056b3;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h1>{{ title }}</h1>
-                    <ul class="file-list">
-                        {% for entry in files_and_dirs %}
-                            <li>
-                                <span class="file-name {% if entry.endswith('/') %}folder-name{% endif %}">{{ entry }}</span>
-                                {% if entry.endswith('/') %}
-                                    <a href="/folder/{{ current_path + '/' if current_path else '' }}{{ entry[:-1] }}" class="open-button">Open</a>
-                                {% else %}
-                                    <a href="/file/{{ current_path + '/' if current_path else '' }}{{ entry }}" class="view-button">View</a>
-                                {% endif %}
-                            </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </body>
-            </html>""",
-            title=f"Files in {foldername}",
-            files_and_dirs=files_and_dirs,
-            current_path=current_path
-        )
-    except Exception as e:
-        return f"An error occurred: {e}"
-
+</body>
+</html>
+"""
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", debug=True)
+    app.run(debug=True)
