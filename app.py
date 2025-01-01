@@ -147,7 +147,7 @@ def list_files():
                                 <li>
                                     <span class="file-name {% if entry.endswith('/') %}folder-name{% endif %}">{{ entry }}</span>
                                     {% if entry.endswith('/') %}
-                                        <a href="/folder/{{ current_path + '/' if current_path else '' }}{{ entry[:-1] }}" class="view-button">View</a>
+                                        <a href="/folder/{{ current_path + '/' if current_path else '' }}{{ entry[:-1] }}" class="view-button">Open</a>
                                     {% else %}
                                         <a href="/file/{{ current_path + '/' if current_path else '' }}{{ entry }}" class="view-button">View</a>
                                     {% endif %}
@@ -340,7 +340,7 @@ def list_folder_contents(foldername):
                                 <li>
                                     <span class="file-name {% if entry.endswith('/') %}folder-name{% endif %}">{{ entry }}</span>
                                     {% if entry.endswith('/') %}
-                                        <a href="/folder/{{ current_path + '/' if current_path else '' }}{{ entry[:-1] }}" class="view-button">View</a>
+                                        <a href="/folder/{{ current_path + '/' if current_path else '' }}{{ entry[:-1] }}" class="view-button">Open</a>
                                     {% else %}
                                         <a href="/file/{{ current_path + '/' if current_path else '' }}{{ entry }}" class="view-button">View</a>
                                     {% endif %}
