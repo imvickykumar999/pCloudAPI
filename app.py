@@ -21,7 +21,7 @@ def list_files():
             else:
                 files.append(entry)
 
-        # Optional: Sort the lists alphabetically (case-insensitive)
+        # Sort the lists alphabetically (case-insensitive)
         directories.sort(key=lambda x: x.lower())
         files.sort(key=lambda x: x.lower())
 
@@ -34,12 +34,6 @@ def list_files():
             <head>
                 <title>{{ title }}</title>
                 <style>
-                    * {
-                        margin: 0;
-                        padding: 0;
-                        box-sizing: border-box;
-                    }
-
                     body {
                         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                         background: #f9f9f9;
@@ -61,23 +55,7 @@ def list_files():
                     h1 {
                         font-size: 1.8rem;
                         margin-bottom: 20px;
-                        color: #333;
                         text-align: center;
-                    }
-
-                    .breadcrumb {
-                        margin-bottom: 20px;
-                        font-size: 0.9rem;
-                        text-align: center;
-                    }
-
-                    .breadcrumb a {
-                        color: #007BFF;
-                        text-decoration: none;
-                    }
-
-                    .breadcrumb a:hover {
-                        text-decoration: underline;
                     }
 
                     .file-list {
@@ -88,23 +66,33 @@ def list_files():
                     .file-list li {
                         display: flex;
                         justify-content: space-between;
-                        align-items: center;
                         padding: 10px 15px;
                         border-bottom: 1px solid #ddd;
                     }
 
-                    .file-list li:last-child {
-                        border-bottom: none;
-                    }
-
                     .file-name {
                         font-size: 1rem;
-                        color: #555;
                     }
 
                     .folder-name {
-                        color: blue; /* Sets folder names to blue */
-                        font-weight: bold; /* Optional: Makes folder names bold */
+                        color: blue;
+                        font-weight: bold;
+                    }
+
+                    .open-button {
+                        text-decoration: none;
+                        padding: 8px 15px;
+                        border: 1px solid #28a745;
+                        background-color: #28a745;
+                        color: white;
+                        border-radius: 5px;
+                        font-size: 0.9rem;
+                        transition: all 0.3s ease;
+                    }
+
+                    .open-button:hover {
+                        background-color: #1e7e34;
+                        border-color: #1e7e34;
                     }
 
                     .view-button {
@@ -112,51 +100,33 @@ def list_files():
                         padding: 8px 15px;
                         border: 1px solid #007BFF;
                         background-color: #007BFF;
-                        color: #ffffff;
+                        color: white;
                         border-radius: 5px;
                         font-size: 0.9rem;
-                        font-weight: bold;
                         transition: all 0.3s ease;
                     }
 
                     .view-button:hover {
                         background-color: #0056b3;
                         border-color: #0056b3;
-                        cursor: pointer;
                     }
                 </style>
             </head>
             <body>
                 <div class="container">
                     <h1>{{ title }}</h1>
-                    <div class="breadcrumb">
-                        {% if current_path %}
-                            <a href="{{ url_for('list_files') }}">Home</a>
-                            {% set path_parts = current_path.split('/') %}
-                            {% for i in range(path_parts|length) %}
-                                &gt;
-                                <a href="{{ url_for('list_folder_contents', foldername='/'.join(path_parts[:i+1])) }}">{{ path_parts[i] }}</a>
-                            {% endfor %}
-                        {% else %}
-                            <a href="{{ url_for('list_files') }}">Home</a>
-                        {% endif %}
-                    </div>
-                    {% if files_and_dirs %}
-                        <ul class="file-list">
-                            {% for entry in files_and_dirs %}
-                                <li>
-                                    <span class="file-name {% if entry.endswith('/') %}folder-name{% endif %}">{{ entry }}</span>
-                                    {% if entry.endswith('/') %}
-                                        <a href="/folder/{{ current_path + '/' if current_path else '' }}{{ entry[:-1] }}" class="view-button">Open</a>
-                                    {% else %}
-                                        <a href="/file/{{ current_path + '/' if current_path else '' }}{{ entry }}" class="view-button">View</a>
-                                    {% endif %}
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <p>No files or folders found in this directory.</p>
-                    {% endif %}
+                    <ul class="file-list">
+                        {% for entry in files_and_dirs %}
+                            <li>
+                                <span class="file-name {% if entry.endswith('/') %}folder-name{% endif %}">{{ entry }}</span>
+                                {% if entry.endswith('/') %}
+                                    <a href="/folder/{{ current_path + '/' if current_path else '' }}{{ entry[:-1] }}" class="open-button">Open</a>
+                                {% else %}
+                                    <a href="/file/{{ current_path + '/' if current_path else '' }}{{ entry }}" class="view-button">View</a>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
                 </div>
             </body>
             </html>""",
@@ -171,7 +141,6 @@ def list_files():
 @app.route('/file/<path:filename>')
 def serve_file(filename):
     try:
-        # Secure the file path
         requested_file = os.path.join(FOLDER_PATH, filename)
         abs_requested_file = os.path.abspath(requested_file)
         abs_folder_path = os.path.abspath(FOLDER_PATH)
@@ -190,7 +159,6 @@ def serve_file(filename):
 @app.route('/folder/<path:foldername>')
 def list_folder_contents(foldername):
     try:
-        # Secure the folder path
         requested_path = os.path.join(FOLDER_PATH, foldername)
         abs_requested_path = os.path.abspath(requested_path)
         abs_folder_path = os.path.abspath(FOLDER_PATH)
@@ -211,15 +179,12 @@ def list_folder_contents(foldername):
             else:
                 files.append(entry)
 
-        # Optional: Sort the lists alphabetically (case-insensitive)
         directories.sort(key=lambda x: x.lower())
         files.sort(key=lambda x: x.lower())
 
-        # Combine directories and files, with directories first
         files_and_dirs = directories + files
 
-        # Calculate the relative current path for breadcrumb and URL generation
-        current_path = foldername  # Relative path
+        current_path = foldername
 
         return render_template_string(
             """<!doctype html>
@@ -227,12 +192,6 @@ def list_folder_contents(foldername):
             <head>
                 <title>{{ title }}</title>
                 <style>
-                    * {
-                        margin: 0;
-                        padding: 0;
-                        box-sizing: border-box;
-                    }
-
                     body {
                         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                         background: #f9f9f9;
@@ -254,23 +213,7 @@ def list_folder_contents(foldername):
                     h1 {
                         font-size: 1.8rem;
                         margin-bottom: 20px;
-                        color: #333;
                         text-align: center;
-                    }
-
-                    .breadcrumb {
-                        margin-bottom: 20px;
-                        font-size: 0.9rem;
-                        text-align: center;
-                    }
-
-                    .breadcrumb a {
-                        color: #007BFF;
-                        text-decoration: none;
-                    }
-
-                    .breadcrumb a:hover {
-                        text-decoration: underline;
                     }
 
                     .file-list {
@@ -281,23 +224,33 @@ def list_folder_contents(foldername):
                     .file-list li {
                         display: flex;
                         justify-content: space-between;
-                        align-items: center;
                         padding: 10px 15px;
                         border-bottom: 1px solid #ddd;
                     }
 
-                    .file-list li:last-child {
-                        border-bottom: none;
-                    }
-
                     .file-name {
                         font-size: 1rem;
-                        color: #555;
                     }
 
                     .folder-name {
-                        color: blue; /* Sets folder names to blue */
-                        font-weight: bold; /* Optional: Makes folder names bold */
+                        color: blue;
+                        font-weight: bold;
+                    }
+
+                    .open-button {
+                        text-decoration: none;
+                        padding: 8px 15px;
+                        border: 1px solid #28a745;
+                        background-color: #28a745;
+                        color: white;
+                        border-radius: 5px;
+                        font-size: 0.9rem;
+                        transition: all 0.3s ease;
+                    }
+
+                    .open-button:hover {
+                        background-color: #1e7e34;
+                        border-color: #1e7e34;
                     }
 
                     .view-button {
@@ -305,57 +258,39 @@ def list_folder_contents(foldername):
                         padding: 8px 15px;
                         border: 1px solid #007BFF;
                         background-color: #007BFF;
-                        color: #ffffff;
+                        color: white;
                         border-radius: 5px;
                         font-size: 0.9rem;
-                        font-weight: bold;
                         transition: all 0.3s ease;
                     }
 
                     .view-button:hover {
                         background-color: #0056b3;
                         border-color: #0056b3;
-                        cursor: pointer;
                     }
                 </style>
             </head>
             <body>
                 <div class="container">
                     <h1>{{ title }}</h1>
-                    <div class="breadcrumb">
-                        {% if current_path %}
-                            <a href="{{ url_for('list_files') }}">Home</a>
-                            {% set path_parts = current_path.split('/') %}
-                            {% for i in range(path_parts|length) %}
-                                &gt;
-                                <a href="{{ url_for('list_folder_contents', foldername='/'.join(path_parts[:i+1])) }}">{{ path_parts[i] }}</a>
-                            {% endfor %}
-                        {% else %}
-                            <a href="{{ url_for('list_files') }}">Home</a>
-                        {% endif %}
-                    </div>
-                    {% if files_and_dirs %}
-                        <ul class="file-list">
-                            {% for entry in files_and_dirs %}
-                                <li>
-                                    <span class="file-name {% if entry.endswith('/') %}folder-name{% endif %}">{{ entry }}</span>
-                                    {% if entry.endswith('/') %}
-                                        <a href="/folder/{{ current_path + '/' if current_path else '' }}{{ entry[:-1] }}" class="view-button">Open</a>
-                                    {% else %}
-                                        <a href="/file/{{ current_path + '/' if current_path else '' }}{{ entry }}" class="view-button">View</a>
-                                    {% endif %}
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <p>No files or folders found in this directory.</p>
-                    {% endif %}
+                    <ul class="file-list">
+                        {% for entry in files_and_dirs %}
+                            <li>
+                                <span class="file-name {% if entry.endswith('/') %}folder-name{% endif %}">{{ entry }}</span>
+                                {% if entry.endswith('/') %}
+                                    <a href="/folder/{{ current_path + '/' if current_path else '' }}{{ entry[:-1] }}" class="open-button">Open</a>
+                                {% else %}
+                                    <a href="/file/{{ current_path + '/' if current_path else '' }}{{ entry }}" class="view-button">View</a>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
                 </div>
             </body>
             </html>""",
             title=f"Files in {foldername}",
             files_and_dirs=files_and_dirs,
-            current_path=current_path  # Relative path
+            current_path=current_path
         )
     except Exception as e:
         return f"An error occurred: {e}"
